@@ -1,0 +1,56 @@
+# AppProfile: everything a flow in MemberLink 3.x can run into, independent of any
+# single capability or tenant. Authored once per vendor product (reviewed like code);
+# every capability recorded against this product inherits it.
+id: memberlink-3
+product: memberlink
+versions: ">=3.0 <4"
+screens:
+  # ---- business outcomes: legitimate answers the caller must handle
+  - id: member_not_found
+    kind: business_outcome
+    description: Search returned no members for the criteria.
+    match: [{kind: text_visible, value: "ML-0207"}]
+  - id: access_denied
+    kind: business_outcome
+    description: >-
+      Operator profile is not entitled to this member record. Deterministic and not
+      fixable by retry; the caller decides (e.g. route to a supervisor queue).
+    match: [{kind: text_visible, value: "ML-0403"}]
+  - id: input_rejected
+    kind: business_outcome
+    description: The application rejected the input (server-side validation).
+    match: [{kind: text_visible, value: "ML-0102"}]
+
+  # ---- recoverable: handled deterministically, then the step is retried
+  - id: system_notice
+    kind: recoverable
+    description: Interstitial broadcast notice that must be acknowledged.
+    match: [{kind: text_visible, value: "SYSTEM NOTICE"}]
+    handler:
+      kind: click
+      max_attempts: 2
+      target:
+        description: Acknowledge button on system notice
+        frame: main
+        locators: [{strategy: role, args: {role: button, name: Acknowledge}}]
+  - id: processing
+    kind: recoverable
+    description: Host is slow; the screen auto-refreshes when the request completes.
+    match: [{kind: text_visible, value: "PROCESSING REQUEST"}]
+    handler: {kind: wait, wait_ms: 1500, max_attempts: 6}
+
+  # ---- needs a human: automation must not try to fix these itself
+  - id: session_expired
+    kind: needs_human
+    description: Host session timed out; re-authentication required.
+    match: [{kind: text_visible, value: "ML-0041"}]
+  - id: sign_on_failed
+    kind: needs_human
+    description: Credentials rejected (expired/locked password needs a person).
+    match: [{kind: text_visible, value: "INVALID OPERATOR ID OR PASSWORD"}]
+
+  # ---- hard failures: stop with evidence
+  - id: host_abend
+    kind: failure
+    description: Host program abended (application error).
+    match: [{kind: text_visible, value: "ABEND"}]

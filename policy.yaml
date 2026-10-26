@@ -1,0 +1,13 @@
+# Guardrail policy (deny by default). Enforced by the executor and by a network-level
+# route guard, for both discovery and replay.
+allowed_origins:
+  - http://127.0.0.1:8000
+  - http://localhost:8000
+denied_paths:
+  - ^/app/admin          # back-office administration is out of scope for agents
+  - ^/__test             # test harness
+  - ^/logout
+allowed_actions: [goto, click, fill, select, extract]
+irreversible_patterns:
+  - (?i)\b(post|transfer|withdraw|disburse|delete|close account|open account|approve|submit payment|confirm)\b
+irreversible_mode: require_approval
